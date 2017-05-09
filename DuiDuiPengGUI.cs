@@ -28,7 +28,7 @@ namespace DuiDuiPeng
 		const int downside = 8;             //下边界，从池子区到下边界的距离
 
 		const int PicSize = 64;				//图片边长（图片是正方形，单位为像素）
-		const float scale = 0.9f;           //图片缩放量，实际显示大小为PicSize*scale
+		const float scale = 0.8f;           //图片缩放量，实际显示大小为PicSize*scale
 											//建议：大图1.0倍，中图0.8倍，小图0.6倍，不要小于0.6倍
 		const int rightside = (int)(350 * scale);   //右边界，从池子区到右边界的距离
 		const int block = (int)(PicSize * scale); //块的宽度（int型可以省去不必要的强制转换）
@@ -119,12 +119,20 @@ namespace DuiDuiPeng
 			switch (currentGameState)		//不同状态不同更新方式
 			{
 				case GameState.Start:
+
 					gamepool.SetStartTime();
-					if (mousestate.LeftButton == ButtonState.Pressed)
+					if (mousestate.LeftButton == ButtonState.Released && before)
 					{
-						currentGameState = GameState.InGame;
 						gamepool.InitGame();
+						currentGameState = GameState.InGame;
 					}
+
+
+					//处理单击逻辑：上一次点下且本次抬起才是有效单击，否则刷新本次记录
+					if (mousestate.LeftButton == ButtonState.Pressed)
+						before = true;
+					else
+						before = false;
 					break;
 
 
@@ -195,10 +203,20 @@ namespace DuiDuiPeng
 
 
 				case GameState.GameOver:
+
 					gamepool.SetStartTime();
+					if (mousestate.LeftButton == ButtonState.Released && before)
+					{
+						gamepool.InitGame();
+						currentGameState = GameState.InGame;
+					}
+
+					//处理单击逻辑：上一次点下且本次抬起才是有效单击，否则刷新本次记录
 					if (mousestate.LeftButton == ButtonState.Pressed)
-						currentGameState = GameState.Start;
-					
+						before = true;
+					else
+						before = false;
+
 					break;
 			}
 		
@@ -246,7 +264,7 @@ namespace DuiDuiPeng
 
 				case GameState.InGame:
 
-					GraphicsDevice.Clear(Color.LightSkyBlue);               //白色刷新窗口
+					GraphicsDevice.Clear(Color.WhiteSmoke);               //白色刷新窗口
 
 					//遍历显示池子中的图片
 					spriteBatch.Begin();
@@ -303,10 +321,10 @@ namespace DuiDuiPeng
 					spriteBatch.DrawString(MyFont,
 						"Game Over :(",								//放置会话
 						new Vector2(                                //把字体放在窗口中间
-							4 * block,
+							2 * block,
 							graphics.PreferredBackBufferHeight / 2 -  2 * block),
 						Color.DarkBlue,                             //颜色
-						0, Vector2.Zero, scale, SpriteEffects.None, 1);
+						0, Vector2.Zero, scale * 2, SpriteEffects.None, 1);
 					spriteBatch.End();
 
 					//绘制最终得分
@@ -334,10 +352,10 @@ namespace DuiDuiPeng
 					//绘制点击界面继续字符
 					spriteBatch.Begin();
 					spriteBatch.DrawString(MyFont,
-						"click window to restart",                  //放置会话
+						"click window to restart...",                  //放置会话
 						new Vector2(                                //把字体放在窗口中间
-							3 * block,
-							graphics.PreferredBackBufferHeight / 2 + 2 * block),
+							2 * block,
+							graphics.PreferredBackBufferHeight / 2 + 3 * block),
 						Color.DarkBlue,                             //颜色
 						0, Vector2.Zero, scale, SpriteEffects.None, 1);
 					spriteBatch.End();
