@@ -22,14 +22,14 @@ namespace DuiDuiPeng
 		//关于游戏的设置
 		const int species = 11;						//游戏使用的图片种类数（最大为11），与难度挂钩，不宜设置过低
 													//测试发现，在7*10的图中少于4种图片会无法生成可行解，期待数学家给出证明
-		const int row = 7;							//设置行数
-		const int col = 10;							//设置列数
+		const int row = 16;							//设置行数
+		const int col = 12;							//设置列数
 		const int dx = 8;							//在窗口内显示池子位置的偏移量x和y,视为池子显示的位置起始坐标
 		const int dy = 8;
 		const int downside = 8;						//下边界，从池子区底部到下边界的距离
 		const int rightside = (int)(350 * scale);   //右边界，从池子区到右边界的距离
 		const int PicSize = 64;						//图片边长（图片是正方形，单位为像素）
-		const float scale = 0.8f;					//显示缩放量，与窗口内各对象大小有关
+		const float scale = 0.75f;					//显示缩放量，与窗口内各对象大小有关
 													//建议：大图1.0倍，中图0.8倍，小图0.6倍，不要大于1.0倍也不要小于0.6倍
 		const int block = (int)(PicSize * scale);	//图片的显示宽度（scale为浮点型）
 		const int spacing = 6;						//图片与图片之间的间距
@@ -86,14 +86,14 @@ namespace DuiDuiPeng
 			//加载图片，此处数组下标从1开始，0为空白图片
 			SourceImage[0] = Content.Load<Texture2D>(@"Images\blank");
 			SourceImage[1] = Content.Load<Texture2D>(@"Images\c-sharp");
-			SourceImage[2] = Content.Load<Texture2D>(@"Images\cpp");
-			SourceImage[3] = Content.Load<Texture2D>(@"Images\go");
-			SourceImage[4] = Content.Load<Texture2D>(@"Images\java");
-			SourceImage[5] = Content.Load<Texture2D>(@"Images\javascript");
-			SourceImage[6] = Content.Load<Texture2D>(@"Images\matlab");
-			SourceImage[7] = Content.Load<Texture2D>(@"Images\perl");
-			SourceImage[8] = Content.Load<Texture2D>(@"Images\php");
-			SourceImage[9] = Content.Load<Texture2D>(@"Images\python");
+			SourceImage[2] = Content.Load<Texture2D>(@"Images\java");
+			SourceImage[3] = Content.Load<Texture2D>(@"Images\cpp");
+			SourceImage[4] = Content.Load<Texture2D>(@"Images\php");
+			SourceImage[5] = Content.Load<Texture2D>(@"Images\go");
+			SourceImage[6] = Content.Load<Texture2D>(@"Images\python");
+			SourceImage[7] = Content.Load<Texture2D>(@"Images\matlab");
+			SourceImage[8] = Content.Load<Texture2D>(@"Images\javascript");
+			SourceImage[9] = Content.Load<Texture2D>(@"Images\perl");
 			SourceImage[10] = Content.Load<Texture2D>(@"Images\ruby");
 			SourceImage[11] = Content.Load<Texture2D>(@"Images\swift");
 
@@ -122,7 +122,8 @@ namespace DuiDuiPeng
 			{
 				case GameState.Start:						//游戏开始前状态
 
-					gamepool.SetStartTime();				//保持进入游戏前时间始终为满
+					gamepool.SetStartTime();                //保持进入游戏前时间始终为满
+
 					if (mousestate.LeftButton == ButtonState.Released && before)
 					{										//判断鼠标单击一次
 						gamepool.InitGame();				//初始化游戏
@@ -181,10 +182,24 @@ namespace DuiDuiPeng
 						}
 					}
 
-					//debug方法：同时按住键盘W键和E键时间加满
+					//debug方法：同时按住键盘W键和T键时间加满
 					//（此功能可以用于作弊，一般人我不告诉他哈哈）
 					if (keyboardstate.IsKeyDown(Keys.W) && keyboardstate.IsKeyDown(Keys.T))
 						gamepool.SetStartTime();
+
+					//debug方法：同时按住键盘W键和K键自杀
+					//（这功能怕是没有人会用吧……）
+					if (keyboardstate.IsKeyDown(Keys.W) && keyboardstate.IsKeyDown(Keys.K))
+					{
+						currentGameState = GameState.GameOver;      //转换到GameOver状态
+						GameOverTime = gamepool.GetNowTime();       //获得GameOver的时间
+						gamepool.HighScore = gamepool.Score;        //设定最高分（当得分大于历史最高分时才可以设定成功）
+					}
+
+					//debug方法：同时按住键盘W键和S键快速加得分
+					//（此功能可以用于作弊，一般人我不告诉他哈哈）
+					if (keyboardstate.IsKeyDown(Keys.W) && keyboardstate.IsKeyDown(Keys.S))
+						gamepool.AddScore(1000);
 
 					//单击refress按钮刷新数组&得分清零，if中语句判断点击是否在refress图片区域内且单击有效
 					if (mousestate.X >= RefressPos.X && mousestate.X <= RefressPos.X + 128 * scale &&
@@ -194,6 +209,11 @@ namespace DuiDuiPeng
 						gamepool.InitGame();			//初始化游戏
 						gamepool.SetStartTime();		//得分清零
 					}
+
+					//控制难度：时间阶梯减少
+					if (gamepool.Score > 100000)
+						gamepool.Life = 30 - gamepool.Score / 33333;//每十万分减少3秒
+					
 
 					//剩余时间到0则game over
 					if (TimeRemain == 0)
@@ -210,6 +230,7 @@ namespace DuiDuiPeng
 
 					//等待3秒：防止沉迷，防止GameOver之后马上开始下一轮游戏
 					Wait3Second = 3 - (gamepool.GetNowTime() - GameOverTime);   //获取从GameOver到现在的时间
+					gamepool.Life = 30;								//生命值恢复30秒
 
 					if (mousestate.LeftButton == ButtonState.Released && before && Wait3Second <= 0) 
 					{
@@ -249,8 +270,8 @@ namespace DuiDuiPeng
 					spriteBatch.Begin();
 					spriteBatch.DrawString(MyFont,
 						"click window to start game :)\n        good luck !",	//放置会话
-						new Vector2(									//显示坐标
-							block,
+						new Vector2(                                    //显示坐标（9*block宽）
+							graphics.PreferredBackBufferWidth / 2 - 5 * block,
 							graphics.PreferredBackBufferHeight / 2 - block),								
 						Color.DarkBlue,									//颜色
 						0, Vector2.Zero, 
@@ -308,7 +329,7 @@ namespace DuiDuiPeng
 					spriteBatch.DrawString(
 						MyFont,											//设置字体
 						"Score:" + gamepool.Score,						//设置得分格式
-						ScorePos, //放置的位置向量
+						ScorePos,										//放置的位置向量
 						Color.DarkBlue,									//字体颜色
 						0, Vector2.Zero, 
 						scale,											//字体缩放
@@ -348,8 +369,8 @@ namespace DuiDuiPeng
 					spriteBatch.Begin();
 					spriteBatch.DrawString(MyFont,
 						"Game Over :(",									//放置会话
-						new Vector2(									//字体显示坐标
-							2 * block,
+						new Vector2(                                    //字体显示坐标（宽度为7*block）
+							graphics.PreferredBackBufferWidth / 2 - 5 * block,
 							graphics.PreferredBackBufferHeight / 2 -  2 * block),
 						Color.DarkBlue,							
 						0, Vector2.Zero, 
@@ -361,8 +382,8 @@ namespace DuiDuiPeng
 					spriteBatch.Begin();
 					spriteBatch.DrawString(MyFont,
 						"Score:  "+gamepool.Score,						//放置会话
-						new Vector2(                                    //字体显示坐标
-							4 * block,
+						new Vector2(                                    //字体显示坐标（比GameOver向右2*block）
+							graphics.PreferredBackBufferWidth / 2 - 5 * block,
 							graphics.PreferredBackBufferHeight / 2),
 						Color.DarkBlue,								
 						0, Vector2.Zero, scale, 
@@ -373,8 +394,8 @@ namespace DuiDuiPeng
 					spriteBatch.Begin();
 					spriteBatch.DrawString(MyFont,
 						"Highest:" + gamepool.HighScore,				//放置会话
-						new Vector2(									//字体显示坐标
-							4 * block,
+						new Vector2(                                    //字体显示坐标
+							graphics.PreferredBackBufferWidth / 2 - 5 * block,
 							graphics.PreferredBackBufferHeight / 2 + block),
 						Color.DarkBlue,                            
 						0, Vector2.Zero, scale, 
@@ -388,7 +409,7 @@ namespace DuiDuiPeng
 						spriteBatch.DrawString(MyFont,
 							"click window to restart...",                   //放置会话
 							new Vector2(                                    //字体显示坐标
-								2 * block,
+								graphics.PreferredBackBufferWidth / 2 - 5 * block,
 								graphics.PreferredBackBufferHeight / 2 + 3 * block),
 							Color.DarkBlue,
 							0, Vector2.Zero, scale,

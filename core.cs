@@ -406,7 +406,7 @@ namespace DuiDuiPeng
 	{	
 		private int StartTime;				//开始时间，数值为从当天0:00:00起到此刻的时间
 		private int highScore = 0;          //保存历次游戏最高分（随对象回收而消失）
-		private int life = 15;				//生命值，典型值为15秒，15秒内无操作则游戏结束
+		private int life = 30;				//生命值，典型值为15秒，15秒内无操作则游戏结束
 
 		public int Life						//生命值属性
 		{
