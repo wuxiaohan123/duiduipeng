@@ -141,8 +141,11 @@ namespace DuiDuiPeng
 						//（此功能可以用于作弊，一般人我不告诉他哈哈）
 						if (mousestate.LeftButton == ButtonState.Released && before)//检测单击事件
 						{
-							gamepool.Exchange(mousePosInMap, Interesting);			//无条件交换当前点击的块跟兴趣块（必须是相邻才能交换）
-							Interesting = mousePosInMap;							//将当前点击的块设置为兴趣块
+							if (mousePosInMap != new Vector2(-1, -1))
+							{
+								gamepool.Exchange(mousePosInMap, Interesting);          //无条件交换当前点击的块跟兴趣块（必须是相邻才能交换）
+								Interesting = mousePosInMap;                            //将当前点击的块设置为兴趣块
+							}
 						}
 						while (gamepool.FindExplicit(false))						//一直消除直到无法消除为止
 						{
@@ -206,9 +209,9 @@ namespace DuiDuiPeng
 				case GameState.GameOver:                            //GameOver状态
 
 					//等待3秒：防止沉迷，防止GameOver之后马上开始下一轮游戏
-					Wait3Second = 3 - (gamepool.GetNowTime() - GameOverTime);	//获取从GameOver到现在的时间
+					Wait3Second = 3 - (gamepool.GetNowTime() - GameOverTime);   //获取从GameOver到现在的时间
 
-					if (mousestate.LeftButton == ButtonState.Released && before && Wait3Second<=0)
+					if (mousestate.LeftButton == ButtonState.Released && before && Wait3Second <= 0) 
 					{
 						gamepool.InitGame();
 						gamepool.SetStartTime();					//时间清零
@@ -402,7 +405,7 @@ namespace DuiDuiPeng
 		
 		public int BitmapToArrayX(int x)					//将显示坐标的x坐标转换为数组坐标
 		{
-			if (x < 0 || x> Window.ClientBounds.Width)		//x应当在图中
+			if (x < dx || x> dx + row * (block + spacing) - spacing)//x应当在图中
 				return -1;									//若不在数组中，返回-1
 
 			int n = (x - dx) / (block + spacing);			//粗略的数组坐标（向下取整导致精度不高）
@@ -416,7 +419,7 @@ namespace DuiDuiPeng
 
 		public int BitmapToArrayY(int y)					//将显示坐标的y坐标转换为数组坐标
 		{													//注释同上
-			if (y < 0 || y > Window.ClientBounds.Height)	
+			if (y < 0 || y > dy + col * (block + spacing) - spacing)	
 				return -1;
 
 			int n = (y - dy) / (block + spacing);			

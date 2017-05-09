@@ -111,6 +111,9 @@ namespace DuiDuiPeng
 
 		public bool Exchange(int x1,int y1,int x2,int y2)	//无条件交换(x1,y1)和(x2,y2)的值，无论两块是否相邻
 		{
+			if (x1 < 0 || x1 > Row + 1 || y1 < 0 || y1 > Col + 1 ||
+				x2 < 0 || x2 > Row + 1 || y2 < 0 || y2 > Col + 1)
+				return false;
 			int temp = GetBrick(x1, y1);
 			SetBrick(x1, y1, GetBrick(x2, y2));
 			SetBrick(x2, y2, temp);
@@ -428,6 +431,10 @@ namespace DuiDuiPeng
 		
 		new public bool Exchange(int x1, int y1, int x2, int y2)	//交换相邻两个块的值（隐藏工程类的同名方法）
 		{
+			if (x1 < 0 || x1 > Row + 1 || y1 < 0 || y1 > Col + 1 ||
+				x2 < 0 || x2 > Row + 1 || y2 < 0 || y2 > Col + 1)
+				return false;
+
 			if (Math.Abs(x1 - x2) == 1 && y1==y2 || Math.Abs(y1 - y2) == 1 && x1==x2)	//交换仅限上下左右相邻的块
 			{
 				int temp = GetBrick(x1, y1);	
