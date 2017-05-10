@@ -44,7 +44,12 @@ namespace DuiDuiPeng
 
 		public int Score				//查询返回分数
 		{
-			get { return score; }
+			get { return score;}
+			set
+			{
+				if (value == 0)
+					score = 0;
+			}
 		}
 
 		public int Species				//返回图片种类数
@@ -98,7 +103,7 @@ namespace DuiDuiPeng
 			for(i=0;i<row;i++)
 				for(j=0;j<col;j++)
 					pool[i, j] = 0;
-			score = 0;					//得分归零
+			//score = 0;					//得分归零
 			return;
 		}
 		
@@ -343,14 +348,77 @@ namespace DuiDuiPeng
 			return flag;
 		}
 
-		public bool FindRecessive()		//寻找隐性解
+		public Vector3 FindRecessive()		//寻找隐性解，返回三维向量前两维为数组坐标，第三维为方向，0为横，1为竖，-1为无
 		{
 			//隐性解的定义：在图中存在潜在的、可以通过一次相邻块的交换而转变为显性解的情况。
 			//游戏的进行必须要保证始终存在隐性解，如果无隐性解，玩家将被迫结束游戏
 			//因此当发现无隐性解时需要打乱池子直到产生隐性解
 
-			//等待补全这部分的功能
-			return true;				//在函数完成之前先假定任何时候都存在隐性解
+			int row = Row;
+			int col = Col;
+			int i, j;
+#if true
+			//纵向1101解：
+			for (j = 0; j < col - 3; j++)
+				for (i = 0; i < row; i++)
+					if (GetBrick(i, j) == GetBrick(i, j + 1) &&
+						(GetBrick(i, j) == GetBrick(i, j + 3) || 
+						GetBrick(i, j) == GetBrick(i + 1, j + 2) || 
+						GetBrick(i, j) == GetBrick(i - 1, j + 2))) 
+						return new Vector3(i, j, 1);
+#endif
+#if true
+
+			//纵向1011解：
+			for (j = 0; j < col - 3; j++)
+				for (i = 0; i < row; i++)
+					if (GetBrick(i, j + 2) == GetBrick(i, j + 3) &&
+						(GetBrick(i, j + 2) == GetBrick(i + 1, j + 1) || 
+						GetBrick(i, j + 2) == GetBrick(i - 1, j + 1) || 
+						GetBrick(i, j + 2) == GetBrick(i, j))) 
+						return new Vector3(i, j + 1, 1);
+
+#endif
+#if true
+			//纵向101解：
+			for (j = 0; j < col - 2; j++)
+				for (i = 0; i < row; i++)
+					if (GetBrick(i, j) == GetBrick(i, j + 2) &&
+						(GetBrick(i, j) == GetBrick(i + 1, j + 1) ||
+						GetBrick(i, j) == GetBrick(i - 1, j + 1)))
+						return new Vector3(i, j, 1);
+#endif
+#if true
+			//横向1101解：
+			for (i = 0; i < row - 3; i++)
+				for (j = 0; j < col; j++)
+					if (GetBrick(i, j) == GetBrick(i + 1, j) &&
+						(GetBrick(i, j) == GetBrick(i + 3, j) ||
+						GetBrick(i, j) == GetBrick(i + 2, j + 1) || 
+						GetBrick(i, j) == GetBrick(i + 2, j - 1))) 
+						return new Vector3(i, j, 0);
+#endif
+#if true
+			//横向1011解：
+			for (i = 0; i < row - 3; i++)
+				for (j = 0; j < col; j++)
+					if (GetBrick(i + 2, j) == GetBrick(i + 3, j) &&
+						(GetBrick(i + 2, j) == GetBrick(i, j) ||
+						GetBrick(i + 2, j) == GetBrick(i + 1, j + 1) ||
+						GetBrick(i + 2, j) == GetBrick(i + 1, j - 1)))  
+						return new Vector3(i + 1, j, 0);
+#endif
+#if true
+			//横向101解：
+			for (i = 0; i < row - 2; i++)
+				for (j = 0; j < col; j++)
+					if (GetBrick(i, j) == GetBrick(i + 2, j) &&
+						(GetBrick(i, j) == GetBrick(i + 1, j + 1) ||
+						GetBrick(i, j) == GetBrick(i + 1, j - 1)))
+						return new Vector3(i, j, 0);
+#endif
+			return new Vector3(-1, -1, -1);		
+
 		}
 
 		public void InitGame()			//初始化游戏
@@ -358,9 +426,9 @@ namespace DuiDuiPeng
 			RandomPool();				//打乱池子
 			while (FindExplicit())		//如果有显性解，则打乱池子直到不存在显性解
 				RandomPool();
-			while (!FindRecessive())	//如果无隐性解，则打乱池子直到存在隐性解
+			while (((int)FindRecessive().Z) == -1)	//如果无隐性解，则打乱池子直到存在隐性解
 				RandomPool();
-			
+			Score = 0;
 		}
 
 		public void ConsolePrintPool()		//控制台显示函数，仅用于debug

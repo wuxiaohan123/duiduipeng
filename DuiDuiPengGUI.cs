@@ -32,31 +32,45 @@ namespace DuiDuiPeng
 		const float scale = 0.75f;					//显示缩放量，与窗口内各对象大小有关
 													//建议：大图1.0倍，中图0.8倍，小图0.6倍，不要大于1.0倍也不要小于0.6倍
 		const int block = (int)(PicSize * scale);	//图片的显示宽度（scale为浮点型）
-		const int spacing = 6;						//图片与图片之间的间距
+		const int spacing = (int)(8 * scale);		//图片与图片之间的间距
 		KeyboardState keyboardstate;				//键盘状态对象
 		MouseState mousestate;						//鼠标状态对象
 		bool before = false;                        //保存上一次鼠标点击的结果，用于单击判定
 		bool FirstClick = false;					//记录上一次点击是否成功消除方块
 		int TimeRemain = 0;                         //剩余时间，在update方法中从GamePool类中不断更新
 		int GameOverTime = 0;						//记录GameOver的时间（防止沉迷）
-		int Wait3Second = 0;						//等待三秒（用于GameOver状态）
+		int Wait3Second = 0;                        //等待三秒（用于GameOver状态和提示状态）
+		int IdeaLeftBehind;							//提示的次数
+		bool ShowRecessive;							//显示隐性解的开关
 
 		GamePool gamepool = new GamePool(row, col, species);//实例化游戏池
 
 		//资源文件，图片、字体等
 		Texture2D[] SourceImage = new Texture2D[12];//源图数组(11+1，多出来的1个为空白图片)
-		Texture2D refress;                          //重置(reset)图标		
+		Texture2D refress;                          //重置(reset)图标	
+		Texture2D idea;								//提示(idea)图标
+		Texture2D box;                              //提示隐性解的方框	
+		Texture2D box1;
 		SpriteFont MyFont;							//定义字体文件
 		
 		//显示器二维坐标
-		Vector2 RefressPos = new Vector2((30 + dx + row * (block + spacing)), 50 * scale);  //重置(refress)图标的显示坐标
-		Vector2 ScorePos = new Vector2((30 + dx + row * (block + spacing)), dy);            //得分的显示坐标
-		Vector2 TimeRemainPos = new Vector2((30 + dx + row * (block + spacing)), dy + 200);	//剩余时间的显示坐标
+		Vector2 ScorePos = new Vector2((30 + dx + row * (block + spacing)), dy);					//得分的显示坐标
+		Vector2 RefressPos = new Vector2((30 + dx + row * (block + spacing)), 1.5f * block * scale);//重置(refress)图标的显示坐标
+		Vector2 IdeaPos = new Vector2((30 + dx + row * (block + spacing)), 5 * block * scale);		//隐性解提示(idea)图标的显示坐标
+		Vector2 TimeRemainPos = new Vector2((30 + dx + row * (block + spacing)), 9 * block * scale); //剩余时间的显示坐标
+
+		//显示隐性解的位置以及方向
+		Vector2 BoxPos;
+		Vector2 BoxPos1;
+		int BoxPosAxis;
+		
 
 		//数组二维坐标
 		Vector2 Interesting = new Vector2(species + 1, species + 1);						//兴趣点的数组坐标
 		Vector2 mousePosInMap = new Vector2(species + 1, species + 1);						//将鼠标像素位置转换为数组坐标
 		Vector2 tempMousePosInMap = new Vector2(species + 1, species + 1);
+
+
 
 		public DuiDuiPengGUI()								//构造函数
 		{
@@ -96,9 +110,10 @@ namespace DuiDuiPeng
 			SourceImage[9] = Content.Load<Texture2D>(@"Images\perl");
 			SourceImage[10] = Content.Load<Texture2D>(@"Images\ruby");
 			SourceImage[11] = Content.Load<Texture2D>(@"Images\swift");
-
-			//加载refress图片
 			refress = Content.Load<Texture2D>(@"Images\refress");
+			box = Content.Load<Texture2D>(@"Images\box");
+			box1 = Content.Load<Texture2D>(@"Images\box1");
+			idea = Content.Load<Texture2D>(@"Images\idea");
 
 			//加载精灵字体
 			MyFont = Content.Load<SpriteFont>(@"Fonts\Score");
@@ -124,10 +139,14 @@ namespace DuiDuiPeng
 
 					gamepool.SetStartTime();                //保持进入游戏前时间始终为满
 
-					if (mousestate.LeftButton == ButtonState.Released && before)
+					if (mousestate.LeftButton == ButtonState.Released && before &&
+						mousestate.X >= 0 && mousestate.Y >= 0 &&
+						mousestate.X < graphics.PreferredBackBufferWidth &&
+						mousestate.Y < graphics.PreferredBackBufferHeight)
 					{										//判断鼠标单击一次
 						gamepool.InitGame();				//初始化游戏
 						currentGameState = GameState.InGame;//切换到游戏中模式
+						IdeaLeftBehind = 5;
 					}
 
 					break;
@@ -148,7 +167,7 @@ namespace DuiDuiPeng
 								Interesting = mousePosInMap;                            //将当前点击的块设置为兴趣块
 							}
 						}
-						while (gamepool.FindExplicit(false))						//一直消除直到无法消除为止
+						while (gamepool.FindExplicit(false))                        //一直消除直到无法消除为止
 						{
 							gamepool.FindExplicit(true);
 							gamepool.SetStartTime();
@@ -173,15 +192,36 @@ namespace DuiDuiPeng
 							}
 
 							//此功能的目的是：在一次成功消除之后，取消当前的兴趣点，再点击一次则设置兴趣点，避免连击
-							if (FirstClick)											//FirstClick表示上一次点击是否成功消除									
+							if (FirstClick)                                         //FirstClick表示上一次点击是否成功消除									
 								Interesting = mousePosInMap;                        //设置兴趣块为当前鼠标所点的块
 							else
-								Interesting = new Vector2(row, col);				//取消图中的兴趣块
+								Interesting = new Vector2(row, col);                //取消图中的兴趣块
 
-							FirstClick = false;										//成功消除之后将FirstClick记录改为false
+							FirstClick = false;                                     //成功消除之后将FirstClick记录改为false
+							Wait3Second = 0;                                        //消除后立即关闭提示框
 						}
 					}
 
+					if ((gamepool.FindRecessive().Z) == -1)
+					{
+						gamepool.RandomPool();
+						while (gamepool.FindExplicit(false))						//一直消除直到无法消除为止
+						{
+							gamepool.FindExplicit(true);
+							gamepool.SetStartTime();
+						}
+					}
+
+					//获得隐性解提示的坐标
+					Vector3 temp = gamepool.FindRecessive();
+					BoxPos = ArrayToBitmap((int)temp.X, (int)temp.Y) + new Vector2(-4, -4);
+					BoxPos1 = ArrayToBitmap((int)temp.X, (int)temp.Y) + new Vector2(-4, -4);
+					BoxPosAxis =(int)(gamepool.FindRecessive()).Z;
+
+					//BoxPos =new Vector2((int)mousestate.X, (int)mousestate.Y);   //debug：显示鼠标位置
+					//BoxPosAxis = 0;
+
+					
 					//debug方法：同时按住键盘W键和T键时间加满
 					//（此功能可以用于作弊，一般人我不告诉他哈哈）
 					if (keyboardstate.IsKeyDown(Keys.W) && keyboardstate.IsKeyDown(Keys.T))
@@ -210,6 +250,24 @@ namespace DuiDuiPeng
 						gamepool.SetStartTime();		//得分清零
 					}
 
+
+					//单击idea按钮显示提示（显示三秒）
+					if (mousestate.X >= IdeaPos.X && mousestate.X <= RefressPos.X + 128 * scale &&
+						mousestate.Y >= IdeaPos.Y && mousestate.Y <= IdeaPos.Y + 128 * scale &&
+						mousestate.LeftButton == ButtonState.Released && before && IdeaLeftBehind > 0)
+					{
+						Wait3Second = 3 + gamepool.GetNowTime();
+						IdeaLeftBehind--;
+					}
+
+					//3秒内显示
+					//debug方法：同时按住键盘W键和R键显示隐性解提示框
+					if ((Wait3Second - gamepool.GetNowTime() > 0) || 
+						keyboardstate.IsKeyDown(Keys.W) && keyboardstate.IsKeyDown(Keys.R))
+						ShowRecessive = true;
+					else
+						ShowRecessive = false;
+
 					//控制难度：时间阶梯减少
 					if (gamepool.Score > 100000)
 						gamepool.Life = 30 - gamepool.Score / 33333;//每十万分减少3秒
@@ -230,12 +288,17 @@ namespace DuiDuiPeng
 
 					//等待3秒：防止沉迷，防止GameOver之后马上开始下一轮游戏
 					Wait3Second = 3 - (gamepool.GetNowTime() - GameOverTime);   //获取从GameOver到现在的时间
-					gamepool.Life = 30;								//生命值恢复30秒
+					gamepool.Life = 30;                             //生命值恢复30秒
 
-					if (mousestate.LeftButton == ButtonState.Released && before && Wait3Second <= 0) 
+					if (mousestate.LeftButton == ButtonState.Released &&
+						mousestate.X >= 0 && mousestate.Y >= 0 &&
+						mousestate.X < graphics.PreferredBackBufferWidth &&
+						mousestate.Y < graphics.PreferredBackBufferHeight &&
+						before && Wait3Second <= 0) 
 					{
 						gamepool.InitGame();
-						gamepool.SetStartTime();					//时间清零
+						gamepool.SetStartTime();                    //时间清零
+						IdeaLeftBehind = 5;							//提示次数恢复
 						currentGameState = GameState.InGame;		//跳转至游戏状态
 					}
 
@@ -348,6 +411,28 @@ namespace DuiDuiPeng
 						SpriteEffects.None, 1);
 					spriteBatch.End();
 
+					//绘制idea按钮
+					spriteBatch.Begin();
+					spriteBatch.Draw(                                   //绘制方式同上，此处不再注释
+						idea,
+						IdeaPos,
+						null,
+						Color.White,
+						0, Vector2.Zero,
+						scale,
+						SpriteEffects.None, 1);
+					spriteBatch.End();
+
+					//绘制idea剩余提示次数
+					spriteBatch.Begin();
+					spriteBatch.DrawString(
+						MyFont,
+						" = " + IdeaLeftBehind,							//放置次数
+						IdeaPos + new Vector2(128 * scale, 40 * scale), //放置的位置向量
+						Color.DarkBlue,                                 //颜色
+						0, Vector2.Zero, scale, SpriteEffects.None, 1);
+					spriteBatch.End();
+
 					//绘制剩余时间
 					spriteBatch.Begin();
 					spriteBatch.DrawString(
@@ -357,6 +442,36 @@ namespace DuiDuiPeng
 						Color.DarkBlue,									//颜色
 						0, Vector2.Zero, scale, SpriteEffects.None, 1);
 					spriteBatch.End();
+
+					//绘制隐性解的提示框(按W和R键显示),rect表示矩形是横的还是竖的（0是横，1是竖）
+					if (ShowRecessive && BoxPosAxis==0)
+					{
+						spriteBatch.Begin();
+						spriteBatch.Draw(
+							box,
+							BoxPos,
+							null,
+							Color.White,
+							0, Vector2.Zero,
+							scale,
+							SpriteEffects.None, 1
+							);
+						spriteBatch.End();
+					}
+					else if (ShowRecessive && BoxPosAxis == 1)
+					{
+						spriteBatch.Begin();
+						spriteBatch.Draw(
+							box1,
+							BoxPos1,
+							null,
+							Color.White,
+							0, Vector2.Zero,
+							scale,
+							SpriteEffects.None, 1
+							);
+						spriteBatch.End();
+					}
 
 					break;
 
