@@ -24,11 +24,12 @@ namespace DuiDuiPeng
 													//测试发现，在7*10的图中少于4种图片会无法生成可行解，期待数学家给出证明
 		const int row = 16;							//设置行数
 		const int col = 12;							//设置列数
-		const int dx = 8;							//在窗口内显示池子位置的偏移量x和y,视为池子显示的位置起始坐标
-		const int dy = 8;
-		const int downside = 8;						//下边界，从池子区底部到下边界的距离
-		const int rightside = (int)(350 * scale);   //右边界，从池子区到右边界的距离
-		const int PicSize = 64;						//图片边长（图片是正方形，单位为像素）
+		const int leftside = 10;					//在窗口内显示池子位置的偏移量x和y,视为池子显示的位置起始坐标
+		const int upside = 10;
+		const int downside = 5;						//下边界，从池子区底部到下边界的距离
+		const int rightside = (int)(400 * scale);   //右边界，从池子区到右边界的距离
+		const int PicSize = 64;                     //图片边长（图片是正方形，单位为像素）
+		const int speed = 3;						//动画速度，即每3帧（3/60秒）移动一个块的距离
 		const float scale = 0.75f;					//显示缩放量，与窗口内各对象大小有关
 													//建议：大图1.0倍，中图0.8倍，小图0.6倍，不要大于1.0倍也不要小于0.6倍
 		const int block = (int)(PicSize * scale);	//图片的显示宽度（scale为浮点型）
@@ -41,23 +42,27 @@ namespace DuiDuiPeng
 		int GameOverTime = 0;						//记录GameOver的时间（防止沉迷）
 		int Wait3Second = 0;                        //等待三秒（用于GameOver状态和提示状态）
 		int IdeaLeftBehind;							//提示的次数
-		bool ShowRecessive;							//显示隐性解的开关
+		bool ShowRecessive;                         //显示隐性解的开关
 
 		GamePool gamepool = new GamePool(row, col, species);//实例化游戏池
 
 		//资源文件，图片、字体等
 		Texture2D[] SourceImage = new Texture2D[12];//源图数组(11+1，多出来的1个为空白图片)
+		Texture2D StartPage;
+		Texture2D GameOverPage;
 		Texture2D refress;                          //重置(reset)图标	
 		Texture2D idea;								//提示(idea)图标
 		Texture2D box;                              //提示隐性解的方框	
 		Texture2D box1;
-		SpriteFont MyFont;							//定义字体文件
-		
+		SpriteFont MyFont;                          //定义字体文件
+		SpriteFont StartFont;
+
 		//显示器二维坐标
-		Vector2 ScorePos = new Vector2((30 + dx + row * (block + spacing)), dy);					//得分的显示坐标
-		Vector2 RefressPos = new Vector2((30 + dx + row * (block + spacing)), 1.5f * block * scale);//重置(refress)图标的显示坐标
-		Vector2 IdeaPos = new Vector2((30 + dx + row * (block + spacing)), 5 * block * scale);		//隐性解提示(idea)图标的显示坐标
-		Vector2 TimeRemainPos = new Vector2((30 + dx + row * (block + spacing)), 9 * block * scale); //剩余时间的显示坐标
+		Vector2 ScorePos = new Vector2((30 + leftside + row * (block + spacing)), upside);					//得分的显示坐标
+		Vector2 RefressPos = new Vector2((30 + leftside + row * (block + spacing)), 1.5f * block + upside);	//重置(refress)图标的显示坐标
+		Vector2 IdeaPos = new Vector2((30 + leftside + row * (block + spacing)), 5 * block + upside);			//隐性解提示(idea)图标的显示坐标
+		Vector2 TimeRemainPos = new Vector2((30 + leftside + row * (block + spacing)), 9 * block + upside);   //剩余时间的显示坐标
+		Vector2 StartInfPos = new Vector2(0, 0);
 
 		//显示隐性解的位置以及方向
 		Vector2 BoxPos;
@@ -70,7 +75,8 @@ namespace DuiDuiPeng
 		Vector2 mousePosInMap = new Vector2(species + 1, species + 1);						//将鼠标像素位置转换为数组坐标
 		Vector2 tempMousePosInMap = new Vector2(species + 1, species + 1);
 
-
+		string StartInf = "click window to start game :)\n        good luck !";
+		Vector2 StartInfSpeed = new Vector2(0, 0);
 
 		public DuiDuiPengGUI()								//构造函数
 		{
@@ -78,8 +84,8 @@ namespace DuiDuiPeng
 
 			//窗口宽的计算：池子偏移量dx+池子右边的空间宽度rightside+池子的宽度
 			//窗口高的计算：池子偏移量dy+池子下边的空间宽度downside+池子的高度
-			graphics.PreferredBackBufferWidth  = dx + rightside + row * (block + spacing) - spacing;	//设置显示区域宽度
-			graphics.PreferredBackBufferHeight = dy + downside + col * (block + spacing) - spacing;		//设置显示区域高度
+			graphics.PreferredBackBufferWidth  = leftside + rightside + row * (block + spacing) - spacing;	//设置显示区域宽度
+			graphics.PreferredBackBufferHeight = upside + downside + col * (block + spacing) - spacing;     //设置显示区域高度
 
 			Content.RootDirectory = "Content";				//设置目录
 		}
@@ -94,8 +100,8 @@ namespace DuiDuiPeng
 			spriteBatch = new SpriteBatch(GraphicsDevice);	//新建精灵管理器
 			IsMouseVisible = true;                          //允许窗口内显示鼠标
 
-			Mouse.SetPosition(graphics.PreferredBackBufferWidth / 2, 
-				graphics.PreferredBackBufferHeight / 2);	//将鼠标位置设置在窗口中心（没有什么特殊含义）
+			Mouse.SetPosition(graphics.PreferredBackBufferWidth / 4 * 3, 
+				graphics.PreferredBackBufferHeight / 6);	//将鼠标位置设置在窗口（没有什么特殊含义）
 
 			//加载图片，此处数组下标从1开始，0为空白图片
 			SourceImage[0] = Content.Load<Texture2D>(@"Images\blank");
@@ -110,15 +116,21 @@ namespace DuiDuiPeng
 			SourceImage[9] = Content.Load<Texture2D>(@"Images\perl");
 			SourceImage[10] = Content.Load<Texture2D>(@"Images\ruby");
 			SourceImage[11] = Content.Load<Texture2D>(@"Images\swift");
+			StartPage = Content.Load<Texture2D>(@"Images\language1");
+			GameOverPage = Content.Load<Texture2D>(@"Images\GameOver");
 			refress = Content.Load<Texture2D>(@"Images\refress");
 			box = Content.Load<Texture2D>(@"Images\box");
 			box1 = Content.Load<Texture2D>(@"Images\box1");
 			idea = Content.Load<Texture2D>(@"Images\idea");
 
 			//加载精灵字体
-			MyFont = Content.Load<SpriteFont>(@"Fonts\Score");
+			MyFont = Content.Load<SpriteFont>(@"Fonts\MyFonts");
+			StartFont = Content.Load<SpriteFont>(@"Fonts\StartFonts");
+
+			gamepool.SetStartTime();                        //设定开始时间
+
 			
-			gamepool.SetStartTime();						//设定开始时间
+
 		}
 
 		protected override void UnloadContent() { }         //卸载内容函数
@@ -127,11 +139,17 @@ namespace DuiDuiPeng
 		{
 			keyboardstate = Keyboard.GetState();			//获取键盘状态
 			mousestate = Mouse.GetState();                  //获取鼠标状态
-			
-			
+
 			mousePosInMap = new Vector2(                    //将鼠标显示坐标转换为数组坐标
 				BitmapToArrayX(mousestate.X), 
 				BitmapToArrayY(mousestate.Y));
+
+			for (int i = 0; i < row; i++)					//每次刷新都产生掉落效果（如果可以的话）
+				for (int j = 0; j < col; j++)
+					if (gamepool.move[i, j].Y < 0)
+						gamepool.move[i, j].Y += (block + spacing) / speed;
+					else if (gamepool.move[i, j].Y > 0)		//产生顿一下的效果，兼位置复原
+						gamepool.move[i, j].Y = 0;
 
 			switch (currentGameState)						//不同状态不同更新方式
 			{
@@ -146,8 +164,28 @@ namespace DuiDuiPeng
 					{										//判断鼠标单击一次
 						gamepool.InitGame();				//初始化游戏
 						currentGameState = GameState.InGame;//切换到游戏中模式
+
+						for (int i = 0; i < row; i++)       //将所有块上移到屏幕顶部，造成下落效果
+							for (int j = 0; j < col; j++)
+								if (gamepool.move[i, j].Y != -1000)
+									gamepool.move[i, j] =
+										new Vector2(0, -graphics.PreferredBackBufferHeight);
+
 						IdeaLeftBehind = 5;
+
 					}
+
+					StartInfPos = new Vector2(StartInfPos.X + 0.05f * (mousestate.X - StartInfPos.X - 5 * block) ,
+						StartInfPos.Y + 0.05f * (mousestate.Y - StartInfPos.Y - 1 * block));
+
+					if (StartInfPos.X < 0)
+						StartInfPos.X = 0;
+					if (StartInfPos.X > graphics.PreferredBackBufferWidth - 10 * block)
+						StartInfPos.X = graphics.PreferredBackBufferWidth - 10 * block;
+					if (StartInfPos.Y < 0)
+						StartInfPos.Y = 0;
+					if (StartInfPos.Y > graphics.PreferredBackBufferHeight - 1.5f * block)
+						StartInfPos.Y = graphics.PreferredBackBufferHeight - 1.5f * block;
 
 					break;
 
@@ -298,7 +336,14 @@ namespace DuiDuiPeng
 					{
 						gamepool.InitGame();
 						gamepool.SetStartTime();                    //时间清零
-						IdeaLeftBehind = 5;							//提示次数恢复
+						IdeaLeftBehind = 5;                         //提示次数恢复
+
+						for (int i = 0; i < row; i++)				//将所有块上移到屏幕顶部，造成下落效果
+							for (int j = 0; j < col; j++)
+								if (gamepool.move[i, j].Y != -1000)
+									gamepool.move[i, j] = 
+										new Vector2(0, -graphics.PreferredBackBufferHeight);
+
 						currentGameState = GameState.InGame;		//跳转至游戏状态
 					}
 
@@ -325,18 +370,22 @@ namespace DuiDuiPeng
 		{ 
 			switch (currentGameState)									//不同状态绘制不同界面
 			{
-				case GameState.Start:									//开始界面
+				case GameState.Start:                                   //开始界面
 
-					GraphicsDevice.Clear(Color.Orange);					//橙色背景
+					//此处刷新清除界面
+					GraphicsDevice.Clear(Color.White);					//用白色刷新窗口
+
+					//绘制开始页面
+					spriteBatch.Begin();
+					spriteBatch.Draw(StartPage,Vector2.Zero,Color.White) ;
+					spriteBatch.End();
 
 					//绘制开始提示字符
 					spriteBatch.Begin();
 					spriteBatch.DrawString(MyFont,
-						"click window to start game :)\n        good luck !",	//放置会话
-						new Vector2(                                    //显示坐标（9*block宽）
-							graphics.PreferredBackBufferWidth / 2 - 5 * block,
-							graphics.PreferredBackBufferHeight / 2 - block),								
-						Color.DarkBlue,									//颜色
+						StartInf,	//放置会话
+						StartInfPos,								
+						Color.OrangeRed,									//颜色
 						0, Vector2.Zero, 
 						scale,											//按比例缩放
 						SpriteEffects.None, 1);
@@ -345,12 +394,12 @@ namespace DuiDuiPeng
 					//绘制作者信息
 					spriteBatch.Begin();
 					spriteBatch.DrawString(MyFont,
-						"author: wuxiaohan\n   from UESTC",				//放置作者信息
+						" author: wuxiaohan\n   from UESTC",				//放置作者信息
 						new Vector2(                                    //显示坐标
 							0, 
-							graphics.PreferredBackBufferHeight - block),
-						Color.DarkBlue, 0, Vector2.Zero, 
-						scale * 0.5f,									//缩小至0.5倍的小字
+							graphics.PreferredBackBufferHeight - 1.25f * block),
+						Color.ForestGreen, 0, Vector2.Zero, 
+						scale * 0.75f,									//缩小至0.75倍的小字
 						SpriteEffects.None, 1);
 					spriteBatch.End();
 
@@ -367,7 +416,7 @@ namespace DuiDuiPeng
 						for (int j = 0; j < gamepool.Col; j++)
 							spriteBatch.Draw(
 								SourceImage[gamepool.GetBrick(i, j)],	//从源图中选取显示的图片作为池子里的brick数显示
-								ArrayToBitmap(i, j),					//设置坐标
+								ArrayToBitmap(i, j) + gamepool.move[i,j],		//设置坐标
 								null,									//关于24格动画数组的设定，此处留空
 								Color.White, 
 								0, Vector2.Zero, 
@@ -480,14 +529,19 @@ namespace DuiDuiPeng
 
 					GraphicsDevice.Clear(Color.OrangeRed);
 
+					//绘制GameOver页面
+					spriteBatch.Begin();
+					spriteBatch.Draw(GameOverPage, Vector2.Zero, Color.White);
+					spriteBatch.End();
+
 					//绘制Game Over字符
 					spriteBatch.Begin();
 					spriteBatch.DrawString(MyFont,
 						"Game Over :(",									//放置会话
 						new Vector2(                                    //字体显示坐标（宽度为7*block）
 							graphics.PreferredBackBufferWidth / 2 - 5 * block,
-							graphics.PreferredBackBufferHeight / 2 -  2 * block),
-						Color.DarkBlue,							
+							graphics.PreferredBackBufferHeight / 2 -  5 * block),
+						Color.White,							
 						0, Vector2.Zero, 
 						scale * 2,										//两倍缩放
 						SpriteEffects.None, 1);
@@ -498,9 +552,9 @@ namespace DuiDuiPeng
 					spriteBatch.DrawString(MyFont,
 						"Score:  "+gamepool.Score,						//放置会话
 						new Vector2(                                    //字体显示坐标（比GameOver向右2*block）
-							graphics.PreferredBackBufferWidth / 2 - 5 * block,
-							graphics.PreferredBackBufferHeight / 2),
-						Color.DarkBlue,								
+							graphics.PreferredBackBufferWidth / 2 - 3 * block,
+							graphics.PreferredBackBufferHeight / 2 + 3 * block),
+						Color.White,								
 						0, Vector2.Zero, scale, 
 						SpriteEffects.None, 1);
 					spriteBatch.End();
@@ -510,9 +564,9 @@ namespace DuiDuiPeng
 					spriteBatch.DrawString(MyFont,
 						"Highest:" + gamepool.HighScore,				//放置会话
 						new Vector2(                                    //字体显示坐标
-							graphics.PreferredBackBufferWidth / 2 - 5 * block,
-							graphics.PreferredBackBufferHeight / 2 + block),
-						Color.DarkBlue,                            
+							graphics.PreferredBackBufferWidth / 2 - 3 * block,
+							graphics.PreferredBackBufferHeight / 2 + 4 * block),
+						Color.White,                            
 						0, Vector2.Zero, scale, 
 						SpriteEffects.None, 1);
 					spriteBatch.End();
@@ -525,8 +579,8 @@ namespace DuiDuiPeng
 							"click window to restart...",                   //放置会话
 							new Vector2(                                    //字体显示坐标
 								graphics.PreferredBackBufferWidth / 2 - 5 * block,
-								graphics.PreferredBackBufferHeight / 2 + 3 * block),
-							Color.DarkBlue,
+								graphics.PreferredBackBufferHeight - block),
+							Color.White,
 							0, Vector2.Zero, scale,
 							SpriteEffects.None, 1);
 						spriteBatch.End();
@@ -541,13 +595,13 @@ namespace DuiDuiPeng
 		
 		public int BitmapToArrayX(int x)					//将显示坐标的x坐标转换为数组坐标
 		{
-			if (x < dx || x> dx + row * (block + spacing) - spacing)//x应当在图中
+			if (x < leftside || x> leftside + row * (block + spacing) - spacing)//x应当在图中
 				return -1;									//若不在数组中，返回-1
 
-			int n = (x - dx) / (block + spacing);			//粗略的数组坐标（向下取整导致精度不高）
+			int n = (x - leftside) / (block + spacing);			//粗略的数组坐标（向下取整导致精度不高）
 
-			if (x > dx + n * (block + spacing) &&			//鼠标在左边界右边
-				x < dx + n * (block + spacing) + block)		//鼠标在右边界左边
+			if (x > leftside + n * (block + spacing) &&			//鼠标在左边界右边
+				x < leftside + n * (block + spacing) + block)		//鼠标在右边界左边
 				return n;
 			else
 				return -1;									//若不在数组中，返回-1
@@ -555,13 +609,13 @@ namespace DuiDuiPeng
 
 		public int BitmapToArrayY(int y)					//将显示坐标的y坐标转换为数组坐标
 		{													//注释同上
-			if (y < 0 || y > dy + col * (block + spacing) - spacing)	
+			if (y < 0 || y > upside + col * (block + spacing) - spacing)	
 				return -1;
 
-			int n = (y - dy) / (block + spacing);			
+			int n = (y - upside) / (block + spacing);			
 
-			if (y > dy + n * (block + spacing) &&
-				y< dy + n * (block + spacing) + block)
+			if (y > upside + n * (block + spacing) &&
+				y< upside + n * (block + spacing) + block)
 				return n;
 			else
 				return -1;
@@ -571,12 +625,12 @@ namespace DuiDuiPeng
 		{
 			int i = (int)vetcor2.X;
 			int j = (int)vetcor2.Y;
-			return new Vector2((block + spacing) * i + dx, (block + spacing) * j + dy);
+			return new Vector2((block + spacing) * i + leftside, (block + spacing) * j + upside);
 		}
 
 		public Vector2 ArrayToBitmap(int i,int j)           //将数组坐标转换为显示二维坐标
 		{
-			return new Vector2((block + spacing) * i + dx, (block + spacing) * j + dy);
+			return new Vector2((block + spacing) * i + leftside, (block + spacing) * j + upside);
 		}
 	}
 }

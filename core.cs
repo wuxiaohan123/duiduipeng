@@ -112,7 +112,12 @@ namespace DuiDuiPeng
 
 	class EngineeringPool : Pool							//工程池类，包含控制台运行的代码
 	{
-		public EngineeringPool(int row, int col, int Species) : base(row, col,Species) {; }	//继承并初始化基类：Pool
+		public Vector2[,] move ;							//显示坐标偏移数组，与动画有关
+
+		public EngineeringPool(int row, int col, int Species) : base(row, col,Species)      //继承并初始化基类：Pool
+		{
+			move = new Vector2[Row, Col];
+		}	
 
 		public bool Exchange(int x1,int y1,int x2,int y2)	//无条件交换(x1,y1)和(x2,y2)的值，无论两块是否相邻
 		{
@@ -166,7 +171,10 @@ namespace DuiDuiPeng
 								SetBrick(j, temp, 0);
 							temp--;
 						}
-						q.Clear();							//清空队列
+						q.Clear();                          //清空队列
+
+						for (int k = i; k >= 0; k--)		//将消去的块上移100px，使之产生掉落效果
+							move[j, k].Y = -100;
 					}
 			return;
 		}
